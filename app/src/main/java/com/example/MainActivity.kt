@@ -13,8 +13,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
@@ -37,26 +41,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.network.spotify.SpotifyRepository
+import com.example.player.LocalAudioPlayerManager
+import com.example.preferences.LibraryStorage
 import com.example.service.MediaSessionHub
 import com.example.ui.screen.HomeScreen
 import com.example.ui.screen.InfoScreen
+import com.example.ui.screen.LibraryScreen
+import com.example.ui.screen.LocalPlayerScreen
 import com.example.ui.screen.PermissionsScreen
+import com.example.ui.screen.SearchScreen
 import com.example.ui.screen.SettingsScreen
-import com.example.ui.theme.BurgundyDark
+import com.example.ui.screen.SpotifyConnectScreen
 import com.example.ui.theme.CrimsonGlow
 import com.example.ui.theme.CrimsonPrimary
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.PitchBlack
 import com.example.ui.theme.PitchDark
-import com.example.ui.theme.SurfaceCard
 import com.example.ui.theme.TextMuted
-import com.example.ui.theme.TextPrimary
 import com.example.util.PermissionHelper
 
 enum class AppTab(val title: String) {
     HOME("Home"),
-    SETTINGS("Settings"),
-    PERMISSIONS("Permissions"),
+    SEARCH("Search"),
+    LOCAL("Local"),
+    LIBRARY("Library"),
+    OVERLAY("Overlay"),
+    CONNECT("Spotify"),
+    PERMISSIONS("Perms"),
     INFO("Info")
 }
 
@@ -68,9 +80,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        LocalAudioPlayerManager.init(applicationContext)
+
         setContent {
             MyApplicationTheme {
+                val spotifyRepo = remember { SpotifyRepository(applicationContext) }
+                val libraryStorage = remember { LibraryStorage(applicationContext) }
+
                 MainContent(
+                    spotifyRepository = spotifyRepo,
+                    libraryStorage = libraryStorage,
                     refreshKey = refreshTrigger,
                     onRefreshPermissions = { refreshTrigger++ }
                 )
@@ -86,6 +105,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainContent(
+    spotifyRepository: SpotifyRepository,
+    libraryStorage: LibraryStorage,
     refreshKey: Int,
     onRefreshPermissions: () -> Unit
 ) {
@@ -97,7 +118,6 @@ fun MainContent(
     var isNotificationConnected by remember { mutableStateOf(false) }
     var hasPostNotifPerm by remember { mutableStateOf(false) }
 
-    // Recheck permissions whenever screen resumes or refresh is triggered
     LaunchedEffect(refreshKey) {
         hasOverlayPerm = PermissionHelper.hasOverlayPermission(context)
         isNotificationConnected = PermissionHelper.hasNotificationListenerPermission(context)
@@ -125,16 +145,14 @@ fun MainContent(
                 tonalElevation = 8.dp,
                 modifier = Modifier.testTag("bottom_nav_bar")
             ) {
+                // Home
                 NavigationBarItem(
                     selected = currentTab == AppTab.HOME,
                     onClick = { currentTab = AppTab.HOME },
                     icon = {
-                        Icon(
-                            imageVector = Icons.Default.PlayCircle,
-                            contentDescription = "Home"
-                        )
+                        Icon(imageVector = Icons.Default.PlayCircle, contentDescription = "Home")
                     },
-                    label = { Text("Home", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                    label = { Text("Home", fontSize = 10.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color.White,
                         selectedTextColor = CrimsonGlow,
@@ -144,16 +162,14 @@ fun MainContent(
                     )
                 )
 
+                // Search
                 NavigationBarItem(
-                    selected = currentTab == AppTab.SETTINGS,
-                    onClick = { currentTab = AppTab.SETTINGS },
+                    selected = currentTab == AppTab.SEARCH,
+                    onClick = { currentTab = AppTab.SEARCH },
                     icon = {
-                        Icon(
-                            imageVector = Icons.Default.Tune,
-                            contentDescription = "Settings"
-                        )
+                        Icon(imageVector = Icons.Default.Search, contentDescription = "Search")
                     },
-                    label = { Text("Settings", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                    label = { Text("Search", fontSize = 10.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color.White,
                         selectedTextColor = CrimsonGlow,
@@ -163,16 +179,14 @@ fun MainContent(
                     )
                 )
 
+                // Local Player
                 NavigationBarItem(
-                    selected = currentTab == AppTab.PERMISSIONS,
-                    onClick = { currentTab = AppTab.PERMISSIONS },
+                    selected = currentTab == AppTab.LOCAL,
+                    onClick = { currentTab = AppTab.LOCAL },
                     icon = {
-                        Icon(
-                            imageVector = Icons.Default.Security,
-                            contentDescription = "Permissions"
-                        )
+                        Icon(imageVector = Icons.Default.FolderOpen, contentDescription = "Local")
                     },
-                    label = { Text("Permissions", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                    label = { Text("Local", fontSize = 10.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color.White,
                         selectedTextColor = CrimsonGlow,
@@ -182,16 +196,48 @@ fun MainContent(
                     )
                 )
 
+                // Library
                 NavigationBarItem(
-                    selected = currentTab == AppTab.INFO,
-                    onClick = { currentTab = AppTab.INFO },
+                    selected = currentTab == AppTab.LIBRARY,
+                    onClick = { currentTab = AppTab.LIBRARY },
                     icon = {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = "Info"
-                        )
+                        Icon(imageVector = Icons.Default.Favorite, contentDescription = "Library")
                     },
-                    label = { Text("Info", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                    label = { Text("Library", fontSize = 10.sp, fontWeight = FontWeight.SemiBold) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color.White,
+                        selectedTextColor = CrimsonGlow,
+                        indicatorColor = CrimsonPrimary,
+                        unselectedIconColor = TextMuted,
+                        unselectedTextColor = TextMuted
+                    )
+                )
+
+                // Overlay Settings
+                NavigationBarItem(
+                    selected = currentTab == AppTab.OVERLAY,
+                    onClick = { currentTab = AppTab.OVERLAY },
+                    icon = {
+                        Icon(imageVector = Icons.Default.Tune, contentDescription = "Overlay")
+                    },
+                    label = { Text("Overlay", fontSize = 10.sp, fontWeight = FontWeight.SemiBold) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color.White,
+                        selectedTextColor = CrimsonGlow,
+                        indicatorColor = CrimsonPrimary,
+                        unselectedIconColor = TextMuted,
+                        unselectedTextColor = TextMuted
+                    )
+                )
+
+                // Spotify Connect & More
+                NavigationBarItem(
+                    selected = currentTab == AppTab.CONNECT || currentTab == AppTab.PERMISSIONS || currentTab == AppTab.INFO,
+                    onClick = { currentTab = AppTab.CONNECT },
+                    icon = {
+                        Icon(imageVector = Icons.Default.Radio, contentDescription = "Connect")
+                    },
+                    label = { Text("Connect", fontSize = 10.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color.White,
                         selectedTextColor = CrimsonGlow,
@@ -215,9 +261,24 @@ fun MainContent(
                     isOverlayActive = isOverlayActive,
                     isNotificationConnected = actualNotificationConnected,
                     hasOverlayPerm = hasOverlayPerm,
-                    onNavigateToPermissions = { currentTab = AppTab.PERMISSIONS }
+                    onNavigateToPermissions = { currentTab = AppTab.PERMISSIONS },
+                    onNavigateToSearch = { currentTab = AppTab.SEARCH },
+                    onNavigateToLocal = { currentTab = AppTab.LOCAL }
                 )
-                AppTab.SETTINGS -> SettingsScreen()
+                AppTab.SEARCH -> SearchScreen(
+                    spotifyRepository = spotifyRepository,
+                    libraryStorage = libraryStorage,
+                    onNavigateToConnect = { currentTab = AppTab.CONNECT }
+                )
+                AppTab.LOCAL -> LocalPlayerScreen()
+                AppTab.LIBRARY -> LibraryScreen(
+                    libraryStorage = libraryStorage,
+                    spotifyRepository = spotifyRepository
+                )
+                AppTab.OVERLAY -> SettingsScreen()
+                AppTab.CONNECT -> SpotifyConnectScreen(
+                    spotifyRepository = spotifyRepository
+                )
                 AppTab.PERMISSIONS -> PermissionsScreen(
                     hasOverlayPerm = hasOverlayPerm,
                     isNotificationConnected = actualNotificationConnected,

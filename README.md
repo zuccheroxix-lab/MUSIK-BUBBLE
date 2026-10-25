@@ -1,80 +1,74 @@
-# Music Bubble 🎵🫧
+# Music Bubble Ultimate 🎵🫧
 
-**Music Bubble** is a modern, high-performance native Android application featuring a floating overlay mini player that hovers over games, social apps, and your home screen. It integrates directly with Android's native `MediaSessionManager` to provide real-time playback control, track metadata, and album art from any active audio player (Spotify, YouTube Music, Apple Music, VLC, Musicolet, etc.).
-
----
-
-## ✨ Features
-
-- **Floating Interactive Bubble**:
-  - Touch-based dragging anywhere across the screen.
-  - Magnetic edge-snapping to screen borders.
-  - Glowing pitch black & burgundy aesthetic with elegant crimson accents.
-  - Single tap expands into the full mini-player panel.
-- **Real System Media Control (No Mocks)**:
-  - Play, Pause, Next, and Previous track controls.
-  - Real-time track title, artist name, and album artwork.
-  - Active audio player source detection (e.g. Spotify, YouTube Music).
-- **Customizable Overlay**:
-  - Adjustable bubble diameter (48dp – 76dp) with live visual preview.
-  - Real-time transparency & opacity sliders for bubble and mini-player card.
-  - Haptic vibration feedback on tap.
-  - Instant dismiss and collapse buttons.
-- **Low-Memory & Battery Optimized**:
-  - Engineered for low RAM devices: uses lightweight native views inside the `WindowManager` overlay.
-  - Clean lifecycle management, avoiding memory leaks and battery drain.
-- **100% Offline & Private**:
-  - Zero analytics, zero ads, zero external server tracking. All media session synchronization is processed strictly on-device.
+**Music Bubble** is a high-performance native Android music hub combining an interactive floating overlay player, official **Spotify Web API** catalog search & deep integration, and a full-featured **Local Audio Player** with Storage Access Framework (SAF) and embedded ID3 tag extraction.
 
 ---
 
-## 📱 Architecture & Android Components
+## ✨ Core Features
 
-| Component | Class / API | Responsibility |
-|---|---|---|
-| **Foreground Overlay Service** | `MusicBubbleService` | Manages the ongoing lifecycle of the floating WindowManager view with low-priority notification |
-| **WindowManager Overlay** | `BubbleOverlayManager` | Renders the draggable floating bubble and collapsible mini-player panel (`TYPE_APPLICATION_OVERLAY`) |
-| **Media Listener Service** | `MusicNotificationListenerService` | Binds to system `MediaSessionManager` to capture playback state and metadata from active media apps |
-| **Media Session Hub** | `MediaSessionHub` | Centralized Kotlin `StateFlow` coordinator for active `MediaController` commands |
-| **Dashboard & UI** | `MainActivity` | Jetpack Compose Material 3 interface with dark burgundy theme, status badges, and settings |
+### 1. 🫧 Floating Music Overlay (Native WindowManager)
+- Draggable across any running app or home screen.
+- Auto-magnetic snapping to device screen edges.
+- Pitch Black & Burgundy glassmorphism UI with elegant Crimson Red neon accents.
+- Single tap expands the bubble into the full-featured Mini Player.
+- Real-time transparency & opacity sliders (40% to 100%) and bubble diameter (48dp – 76dp).
+- Tactile haptic feedback on touch.
+- Quick minimize and close controls.
+
+### 2. 🟢 Spotify Web API Integration
+- Real-time catalog search for tracks, albums, artists, and playlists.
+- Filter chips: All, Tracks, Albums, Artists, Playlists.
+- Official album artwork, artist rosters, and release information.
+- One-tap deep linking to open and continue playback in the Spotify app (`spotify:track:...`).
+- In-app Spotify Connect settings with token validation and credentials security.
+
+### 3. 📁 Offline Local Music Player
+- Pure on-device audio playback powered by Android `MediaPlayer` and `AudioAttributes`.
+- Storage Access Framework (SAF) audio file picker (`audio/*`): MP3, FLAC, WAV, M4A, OGG.
+- Real-time ID3 metadata reader (`MediaMetadataRetriever`): track title, artist, album, and embedded album art bitmap.
+- Complete queue management: tap track to play, continuous seekbar, auto-advance on song completion.
+- Seamless synchronization with the Floating Bubble Overlay!
+
+### 4. ❤️ Library & Favorites
+- Save favorite tracks from both Spotify search and local files.
+- Listening and search history logging.
+- Offline persistence via SharedPreferences JSON storage.
+
+### 5. 🔐 Security, Permissions & Privacy
+- Zero analytics, zero ad tracking, zero user data sent to external servers.
+- `SYSTEM_ALERT_WINDOW`: to display floating overlay over other apps.
+- `BIND_NOTIFICATION_LISTENER_SERVICE`: to connect to system `MediaSessionManager` for active third-party media players (Spotify, YouTube Music, etc.).
+- `POST_NOTIFICATIONS`: Android 13+ foreground service status.
 
 ---
 
-## 🔐 Required Permissions & Why
+## 📱 Tech Stack & Architecture
 
-1. **Display Over Other Apps (`SYSTEM_ALERT_WINDOW`)**:
-   - Required by Android to draw the floating bubble overlay over other running applications and games.
-2. **Notification & Media Session Access (`BIND_NOTIFICATION_LISTENER_SERVICE`)**:
-   - Required by Android's security architecture to query `MediaSessionManager.getActiveSessions()` and communicate with media controllers.
-3. **Post Notifications (`POST_NOTIFICATIONS`)**:
-   - Required on Android 13+ (API 33+) to show the ongoing foreground service notification that ensures the overlay is not unexpectedly killed by the OS.
-4. **Battery Optimization Exemption (Optional but recommended)**:
-   - Prevents aggressive manufacturer battery managers (MIUI, OneUI, ColorOS) from putting the service to sleep during long music sessions.
+- **Language**: Kotlin 2.2+
+- **UI Framework**: Jetpack Compose (Material 3)
+- **Networking**: Retrofit 2 + OkHttp 4 + Moshi
+- **Image Loading**: Coil Compose
+- **System Services**: `WindowManager`, `MediaSessionManager`, `NotificationListenerService`, `MediaPlayer`, `MediaMetadataRetriever`
+- **Testing**: Robolectric + JUnit 4
+- **CI/CD**: GitHub Actions
 
 ---
 
-## 🛠️ Build & Compilation
+## 🛠️ Local Build Instructions
 
-### Requirements:
-- JDK 17 (Eclipse Temurin or OpenJDK)
-- Android SDK 36 (Build Tools 36.0.0, Platform Tools)
-- Gradle 8.11+ / AGP 9.1+
-
-### Build Debug APK:
+### Compile Debug APK:
 ```bash
 ./gradlew :app:assembleDebug
 ```
-The debug APK will be created at:
-`app/build/outputs/apk/debug/app-debug.apk`
+Output path: `app/build/outputs/apk/debug/app-debug.apk`
 
-### Build Release APK:
+### Compile Release APK:
 ```bash
 ./gradlew :app:assembleRelease
 ```
-The release APK will be created at:
-`app/build/outputs/apk/release/app-release-unsigned.apk` (or signed if keystore configured)
+Output path: `app/build/outputs/apk/release/app-release-unsigned.apk`
 
-### Run Unit & Robolectric Tests:
+### Run Robolectric & Unit Tests:
 ```bash
 ./gradlew :app:testDebugUnitTest
 ```
@@ -83,31 +77,10 @@ The release APK will be created at:
 
 ## 🚀 GitHub Actions CI/CD Pipeline
 
-The project includes an automated GitHub Actions CI/CD workflow located at `.github/workflows/android-apk.yml`.
-
-### Triggers:
-- **Push & Pull Requests** on `main` and `master` branches: runs verification and compiles APKs.
-- **Manual Trigger** via GitHub `workflow_dispatch`: triggers build on-demand.
-- **Tag Push** (`v*`, e.g. `v1.0.0`): builds release assets and publishes a **GitHub Release**.
-
-### Download Artifacts:
-1. **Debug APK**:
-   - Navigate to the **Actions** tab on your GitHub repository.
-   - Click the latest successful workflow run.
-   - Download the artifact named **`music-bubble-debug-apk`**.
-2. **Release APK**:
-   - For version releases, navigate to the **Releases** page on GitHub.
-   - Download **`MusicBubble-release.apk`** directly from the Release Assets.
-
----
-
-## 📲 Installation on Android Device
-
-1. Download the generated `MusicBubble-debug.apk` to your phone.
-2. Open the file and tap **Install** (allow "Install unknown apps" in Android settings if prompted).
-3. Open **Music Bubble**.
-4. Go to the **Permissions** tab:
-   - Tap **Grant Overlay Permission** → enable "Allow display over other apps" for Music Bubble.
-   - Tap **Enable Media Access** → toggle ON "Music Bubble Media Session Service".
-5. Return to the **Home** tab and tap **START FLOATING BUBBLE**.
-6. Play any song in Spotify, YouTube Music, or your favorite player — the bubble will reflect the song and let you control playback from anywhere!
+The `.github/workflows/android-apk.yml` workflow automatically:
+1. Checks out repository and configures JDK 17 (Temurin).
+2. Executes all Robolectric and unit tests.
+3. Compiles both Debug and Release APKs.
+4. Verifies APK outputs and file sizes.
+5. Uploads `music-bubble-debug-apk` and `music-bubble-release-apk` as workflow artifacts.
+6. Automatically publishes a **GitHub Release** with APK assets when a version tag (`v*`) is pushed.

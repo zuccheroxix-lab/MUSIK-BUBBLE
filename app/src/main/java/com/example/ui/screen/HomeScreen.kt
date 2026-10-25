@@ -24,7 +24,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Pause
@@ -82,6 +84,8 @@ fun HomeScreen(
     isNotificationConnected: Boolean,
     hasOverlayPerm: Boolean,
     onNavigateToPermissions: () -> Unit,
+    onNavigateToSearch: () -> Unit = {},
+    onNavigateToLocal: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -442,6 +446,36 @@ fun HomeScreen(
                         )
                     }
                 }
+            }
+        }
+
+        // Quick Navigation Buttons: Search Online & Local Audio Player
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OutlinedButton(
+                onClick = onNavigateToSearch,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                border = androidx.compose.foundation.BorderStroke(1.dp, SurfaceCardBorder)
+            ) {
+                Icon(imageVector = Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = CrimsonAccent)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Search Spotify", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+
+            OutlinedButton(
+                onClick = onNavigateToLocal,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                border = androidx.compose.foundation.BorderStroke(1.dp, SurfaceCardBorder)
+            ) {
+                Icon(imageVector = Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp), tint = CrimsonAccent)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Local Audio", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
 

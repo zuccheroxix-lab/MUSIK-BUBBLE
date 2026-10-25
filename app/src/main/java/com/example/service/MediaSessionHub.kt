@@ -1,16 +1,15 @@
 package com.example.service
 
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.PlaybackState
 import android.net.Uri
-import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import com.example.model.MediaTrackState
+import com.example.player.LocalAudioPlayerManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,22 +27,31 @@ object MediaSessionHub {
     val isNotificationServiceConnected: StateFlow<Boolean> = _isNotificationServiceConnected.asStateFlow()
 
     @Volatile
+    private var isLocalPlaybackActive = false
+
+    @Volatile
     private var activeController: MediaController? = null
 
     private val controllerCallback = object : MediaController.Callback() {
         override fun onPlaybackStateChanged(state: PlaybackState?) {
-            updateFromController(activeController)
+            if (!isLocalPlaybackActive) {
+                updateFromController(activeController)
+            }
         }
 
         override fun onMetadataChanged(metadata: MediaMetadata?) {
-            updateFromController(activeController)
+            if (!isLocalPlaybackActive) {
+                updateFromController(activeController)
+            }
         }
 
         override fun onSessionDestroyed() {
             Log.d(TAG, "Current active media session destroyed")
             activeController?.unregisterCallback(this)
             activeController = null
-            _mediaState.value = MediaTrackState(hasActiveSession = false)
+            if (!isLocalPlaybackActive) {
+                _mediaState.value = MediaTrackState(hasActiveSession = false)
+            }
         }
     }
 
@@ -53,13 +61,25 @@ object MediaSessionHub {
 
     fun setNotificationServiceConnected(connected: Boolean) {
         _isNotificationServiceConnected.value = connected
-        if (!connected) {
+        if (!connected && !isLocalPlaybackActive) {
             detachController()
         }
     }
 
+    fun setLocalPlaybackState(state: MediaTrackState) {
+        isLocalPlaybackActive = true
+        _mediaState.value = state
+    }
+
     @Synchronized
     fun attachController(controller: MediaController?, context: Context?) {
+        if (isLocalPlaybackActive && LocalAudioPlayerManager.isPlaying.value) {
+            // Keep local playback prioritized while running
+            activeController = controller
+            return
+        }
+
+        isLocalPlaybackActive = false
         if (activeController == controller && controller != null) {
             updateFromController(controller, context)
             return
@@ -90,16 +110,21 @@ object MediaSessionHub {
             activeController?.unregisterCallback(controllerCallback)
         } catch (_: Exception) {}
         activeController = null
-        _mediaState.value = MediaTrackState(hasActiveSession = false)
+        if (!isLocalPlaybackActive) {
+            _mediaState.value = MediaTrackState(hasActiveSession = false)
+        }
     }
 
     fun updateFromController(controller: MediaController?, context: Context? = null) {
         val current = controller ?: activeController
         if (current == null) {
-            _mediaState.value = MediaTrackState(hasActiveSession = false)
+            if (!isLocalPlaybackActive) {
+                _mediaState.value = MediaTrackState(hasActiveSession = false)
+            }
             return
         }
 
+        isLocalPlaybackActive = false
         val metadata = current.metadata
         val playbackState = current.playbackState
 
@@ -117,7 +142,6 @@ object MediaSessionHub {
             ?: ""
 
         val album = metadata?.getString(MediaMetadata.METADATA_KEY_ALBUM) ?: ""
-
         val duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
 
         var artBitmap: Bitmap? = null
@@ -150,7 +174,6 @@ object MediaSessionHub {
         val actions = playbackState?.actions ?: 0L
         val canSkipNext = (actions and PlaybackState.ACTION_SKIP_TO_NEXT) != 0L || actions == 0L
         val canSkipPrev = (actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS) != 0L || actions == 0L
-
         val position = playbackState?.position ?: 0L
 
         if (title.isBlank() && appName.isNotBlank()) {
@@ -175,6 +198,10 @@ object MediaSessionHub {
     }
 
     fun play() {
+        if (isLocalPlaybackActive) {
+            LocalAudioPlayerManager.play()
+            return
+        }
         val controller = activeController ?: return
         try {
             controller.transportControls?.play()
@@ -185,6 +212,10 @@ object MediaSessionHub {
     }
 
     fun pause() {
+        if (isLocalPlaybackActive) {
+            LocalAudioPlayerManager.pause()
+            return
+        }
         val controller = activeController ?: return
         try {
             controller.transportControls?.pause()
@@ -195,6 +226,10 @@ object MediaSessionHub {
     }
 
     fun togglePlayPause() {
+        if (isLocalPlaybackActive) {
+            LocalAudioPlayerManager.togglePlayPause()
+            return
+        }
         val controller = activeController ?: return
         val currentPlaying = _mediaState.value.isPlaying
         try {
@@ -210,6 +245,10 @@ object MediaSessionHub {
     }
 
     fun skipToNext() {
+        if (isLocalPlaybackActive) {
+            LocalAudioPlayerManager.skipNext()
+            return
+        }
         val controller = activeController ?: return
         try {
             controller.transportControls?.skipToNext()
@@ -220,6 +259,10 @@ object MediaSessionHub {
     }
 
     fun skipToPrevious() {
+        if (isLocalPlaybackActive) {
+            LocalAudioPlayerManager.skipPrevious()
+            return
+        }
         val controller = activeController ?: return
         try {
             controller.transportControls?.skipToPrevious()
@@ -230,6 +273,10 @@ object MediaSessionHub {
     }
 
     fun seekTo(positionMs: Long) {
+        if (isLocalPlaybackActive) {
+            LocalAudioPlayerManager.seekTo(positionMs)
+            return
+        }
         val controller = activeController ?: return
         try {
             controller.transportControls?.seekTo(positionMs)

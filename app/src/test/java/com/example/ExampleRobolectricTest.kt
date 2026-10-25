@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.example.model.MediaTrackState
 import com.example.preferences.BubblePreferences
+import com.example.preferences.LibraryStorage
+import com.example.preferences.SavedTrack
 import com.example.service.MediaSessionHub
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -69,5 +71,40 @@ class ExampleRobolectricTest {
 
         MediaSessionHub.setOverlayActive(false)
         assertFalse(MediaSessionHub.isOverlayActive.value)
+    }
+
+    @Test
+    fun `library storage saves and removes favorites correctly`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val library = LibraryStorage(context)
+        val track = SavedTrack(
+            id = "track_123",
+            title = "Blinding Lights",
+            artist = "The Weeknd",
+            album = "After Hours"
+        )
+
+        assertFalse(library.isFavorite("track_123"))
+        library.toggleFavorite(track)
+        assertTrue(library.isFavorite("track_123"))
+
+        library.toggleFavorite(track)
+        assertFalse(library.isFavorite("track_123"))
+    }
+
+    @Test
+    fun `library storage logs history items`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val library = LibraryStorage(context)
+        val track = SavedTrack(
+            id = "hist_1",
+            title = "Save Your Tears",
+            artist = "The Weeknd"
+        )
+
+        library.addToHistory(track)
+        assertTrue(library.history.value.any { it.id == "hist_1" })
+        library.clearHistory()
+        assertTrue(library.history.value.isEmpty())
     }
 }
