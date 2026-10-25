@@ -1,0 +1,111 @@
+name: Build Music Bubble Android APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    name: Build & Verify APKs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 2. Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: 3. Grant Execute Permission for Gradle Wrapper
+        run: chmod +x gradlew || chmod +x ./gradlew || true
+
+      - name: 4. Run Unit & Robolectric Tests
+        run: |
+          echo "Running local unit and Robolectric tests..."
+          ./gradlew :app:testDebugUnitTest --stacktrace
+
+      - name: 5. Compile Debug APK
+        run: |
+          echo "Compiling Debug APK..."
+          ./gradlew :app:assembleDebug --stacktrace
+
+      - name: 6. Compile Release APK
+        run: |
+          echo "Compiling Release APK..."
+          ./gradlew :app:assembleRelease --stacktrace
+
+      - name: 7. Verify APK Outputs and File Sizes
+        run: |
+          echo "Verifying generated APK files..."
+          DEBUG_APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          RELEASE_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+
+          if [ -z "$DEBUG_APK" ] || [ ! -f "$DEBUG_APK" ]; then
+            echo "❌ Error: Debug APK was not generated!"
+            exit 1
+          fi
+
+          if [ -z "$RELEASE_APK" ] || [ ! -f "$RELEASE_APK" ]; then
+            echo "❌ Error: Release APK was not generated!"
+            exit 1
+          fi
+
+          DEBUG_SIZE=$(stat -c%s "$DEBUG_APK")
+          RELEASE_SIZE=$(stat -c%s "$RELEASE_APK")
+
+          echo "✅ Debug APK found: $DEBUG_APK (Size: $DEBUG_SIZE bytes)"
+          echo "✅ Release APK found: $RELEASE_APK (Size: $RELEASE_SIZE bytes)"
+
+          # Prepare named files for clean distribution
+          mkdir -p output_apks
+          cp "$DEBUG_APK" output_apks/MusicBubble-debug.apk
+          cp "$RELEASE_APK" output_apks/MusicBubble-release.apk
+
+      - name: 8. Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: music-bubble-debug-apk
+          path: output_apks/MusicBubble-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: 9. Upload Release APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: music-bubble-release-apk
+          path: output_apks/MusicBubble-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: 10. Publish GitHub Release (On Tag Push)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Music Bubble ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            output_apks/MusicBubble-release.apk
+            output_apks/MusicBubble-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

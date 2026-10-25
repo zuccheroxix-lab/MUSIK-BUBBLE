@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Music Bubble</string>
+    <string name="notification_listener_service_label">Music Bubble Media Session Service</string>
+    <string name="overlay_service_label">Music Bubble Floating Overlay</string>
+    <string name="channel_overlay_name">Music Bubble Overlay</string>
+    <string name="channel_overlay_desc">Ongoing notification for active floating music bubble overlay</string>
+    <string name="notification_title">Music Bubble Active</string>
+    <string name="notification_text">Floating music player overlay is running</string>
+    <string name="action_stop">Stop</string>
+    <string name="action_toggle_play">Play/Pause</string>
+    <string name="action_next">Next</string>
+    <string name="action_prev">Previous</string>
+    <string name="no_active_media">No Active Music Session</string>
+    <string name="no_active_media_desc">Play audio on Spotify, YouTube Music, or any media app to control it from the bubble.</string>
+</resources>

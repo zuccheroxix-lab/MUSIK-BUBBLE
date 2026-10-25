@@ -1,0 +1,6 @@
+{
+  "name": "Music Bubble",
+  "description": "Floating mini music player overlay for controlling playback from any app with live MediaSession integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
